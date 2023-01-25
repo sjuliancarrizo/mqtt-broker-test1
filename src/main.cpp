@@ -1,12 +1,19 @@
 #include <Arduino.h>
 #include "WiFi.h"
-#include "mongoose-7.9.h"
+//#include "mongoose-7.9.h"
+#include "mongoose-6.14.h"
+
+//#define v7_9
+#define v6_14
 
 const char * ssid = "South Africa 2.4G";
 const char * password = "redcasa88";
 
-static const char *s_listen_on = "mqtt://0.0.0.0:1883";
+//static const char *s_listen_on = "mqtt://0.0.0.0:1883";
+static const char *s_listen_on = "0.0.0.0:1883";
 
+
+#ifdef v7_9
 // A list of subscription, held in memory
 struct sub {
   struct sub *next;
@@ -128,6 +135,62 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   (void) fn_data;
 }
 
+void broker7_9()
+{
+  struct mg_mgr mgr;                // Event manager
+  //signal(SIGINT, signal_handler);   // Setup signal handlers - exist event
+  //signal(SIGTERM, signal_handler);  // manager loop on SIGINT and SIGTERM
+  mg_mgr_init(&mgr);                // Initialise event manager
+  //MG_INFO(("Starting on %s", s_listen_on));      // Inform that we're starting
+  Serial.println("Starting");
+  mg_mqtt_listen(&mgr, s_listen_on, fn, NULL);   // Create MQTT listener
+  while (s_signo == 0) mg_mgr_poll(&mgr, 1000);  // Event loop, 1s timeout
+  mg_mgr_free(&mgr); 
+}
+#endif /* v7_9 */
+
+#ifdef v6_14
+
+static void ev_handler(struct mg_connection *c, int ev, void *ev_data) 
+{
+  if (ev != MG_EV_POLL) printf("USER HANDLER GOT EVENT %d\n", ev);
+  /* Do your custom event processing here */
+  mg_mqtt_broker(c, ev, ev_data);
+}
+
+
+void broker6_14()
+{
+  struct mg_mgr mgr;
+  struct mg_connection *c;
+  struct mg_mqtt_broker brk;
+
+  mg_mgr_init(&mgr, NULL);
+  mg_mqtt_broker_init(&brk, NULL);
+
+  if ((c = mg_bind(&mgr, s_listen_on, (mg_event_handler_t) ev_handler, NULL)) == NULL) 
+  {
+    fprintf(stderr, "mg_bind(%s) failed\n", s_listen_on);
+    return;
+  }
+  mg_mqtt_broker_init(&brk, NULL);
+  c->user_data = &brk;
+  mg_set_protocol_mqtt(c);
+
+  printf("MQTT broker started on %s\n", s_listen_on);
+
+  /*
+   * TODO: Add a HTTP status page that shows current sessions
+   * and subscriptions
+   */
+
+  for (;;) {
+    mg_mgr_poll(&mgr, 1000);
+  }
+
+}
+#endif /* v6_14 */
+
 /***********************************************
  *  Funciones para manejor de conectividad WiFi
  ***********************************************/
@@ -154,25 +217,22 @@ int connectWifi()
   }
 }
 
-void broker()
-{
-  struct mg_mgr mgr;                // Event manager
-  //signal(SIGINT, signal_handler);   // Setup signal handlers - exist event
-  //signal(SIGTERM, signal_handler);  // manager loop on SIGINT and SIGTERM
-  mg_mgr_init(&mgr);                // Initialise event manager
-  //MG_INFO(("Starting on %s", s_listen_on));      // Inform that we're starting
-  Serial.println("Starting");
-  mg_mqtt_listen(&mgr, s_listen_on, fn, NULL);   // Create MQTT listener
-  while (s_signo == 0) mg_mgr_poll(&mgr, 1000);  // Event loop, 1s timeout
-  mg_mgr_free(&mgr); 
-}
+
 
 void setup() {
   Serial.begin(115200);
   if (connectWifi() != 0)
     Serial.println("Wifi error.");
   
-  broker();
+  #ifdef v7_9
+   broker7_9();
+  #endif
+
+  #ifdef v6_14
+   broker6_14();
+  #endif
+
+
 
    
 }

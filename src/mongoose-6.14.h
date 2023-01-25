@@ -3568,7 +3568,7 @@ struct {								\
 #endif
 
 #ifndef MG_ENABLE_MQTT_BROKER
-#define MG_ENABLE_MQTT_BROKER 0
+#define MG_ENABLE_MQTT_BROKER 1
 #endif
 
 #ifndef MG_ENABLE_SSL
