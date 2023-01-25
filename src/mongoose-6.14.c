@@ -5,6 +5,8 @@
 
 #undef poll
 
+#include "Arduino.h"
+
 /*
  * Copyright (c) 2014 Cesanta Software Limited
  * All rights reserved
@@ -11377,8 +11379,9 @@ void mg_mqtt_broker_init(struct mg_mqtt_broker *brk, void *user_data) {
 
 static void mg_mqtt_broker_handle_connect(struct mg_mqtt_broker *brk,
                                           struct mg_connection *nc) {
-  struct mg_mqtt_session *s =
-      (struct mg_mqtt_session *) MG_CALLOC(1, sizeof *s);
+
+  struct mg_mqtt_session *s = (struct mg_mqtt_session *) calloc(1, sizeof (struct mg_mqtt_session *));
+
   if (s == NULL) {
     /* LCOV_EXCL_START */
     mg_mqtt_connack(nc, MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE);
@@ -11388,7 +11391,8 @@ static void mg_mqtt_broker_handle_connect(struct mg_mqtt_broker *brk,
 
   /* TODO(mkm): check header (magic and version) */
 
-  mg_mqtt_session_init(brk, s, nc);
+  mg_mqtt_session_init(brk, s, nc);  
+
   nc->priv_2 = s;
   mg_mqtt_add_session(s);
 

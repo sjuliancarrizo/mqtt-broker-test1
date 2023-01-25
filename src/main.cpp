@@ -151,11 +151,12 @@ void broker7_9()
 
 #ifdef v6_14
 
-static void ev_handler(struct mg_connection *c, int ev, void *ev_data) 
+static void ev_handler(struct mg_connection *nc, int ev, void *data) 
 {
   if (ev != MG_EV_POLL) printf("USER HANDLER GOT EVENT %d\n", ev);
-  /* Do your custom event processing here */
-  mg_mqtt_broker(c, ev, ev_data);
+  
+  mg_mqtt_broker(nc, ev, data);
+  
 }
 
 
@@ -166,7 +167,7 @@ void broker6_14()
   struct mg_mqtt_broker brk;
 
   mg_mgr_init(&mgr, NULL);
-  mg_mqtt_broker_init(&brk, NULL);
+  //mg_mqtt_broker_init(&brk, NULL);
 
   if ((c = mg_bind(&mgr, s_listen_on, (mg_event_handler_t) ev_handler, NULL)) == NULL) 
   {
@@ -179,10 +180,7 @@ void broker6_14()
 
   printf("MQTT broker started on %s\n", s_listen_on);
 
-  /*
-   * TODO: Add a HTTP status page that shows current sessions
-   * and subscriptions
-   */
+  
 
   for (;;) {
     mg_mgr_poll(&mgr, 1000);
@@ -220,6 +218,7 @@ int connectWifi()
 
 
 void setup() {
+  delay(3000);
   Serial.begin(115200);
   if (connectWifi() != 0)
     Serial.println("Wifi error.");
