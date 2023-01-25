@@ -4,13 +4,14 @@
 #include "mongoose-6.14.h"
 
 //#define v7_9
-#define v6_14
+//#define v6_14
+#define v7_adapt
 
 const char * ssid = "South Africa 2.4G";
 const char * password = "redcasa88";
 
-//static const char *s_listen_on = "mqtt://0.0.0.0:1883";
-static const char *s_listen_on = "0.0.0.0:1883";
+static const char *s_listen_on = "mqtt://0.0.0.0:1883";
+//static const char *s_listen_on = "0.0.0.0:1883";
 
 
 #ifdef v7_9
@@ -189,6 +190,12 @@ void broker6_14()
 }
 #endif /* v6_14 */
 
+#ifdef v7_adapt
+   void brokerv7_adapt()
+   {
+
+   }
+#endif /* v7_adapt */
 /***********************************************
  *  Funciones para manejor de conectividad WiFi
  ***********************************************/
@@ -229,6 +236,10 @@ void setup() {
 
   #ifdef v6_14
    broker6_14();
+  #endif
+
+  #ifdef v7_adapt
+   brokerv7_adapt();
   #endif
 
 
