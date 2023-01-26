@@ -7,6 +7,39 @@
 //#define v6_14
 #define v7_adapt
 
+//---------------
+// Thing to put in a separated file
+
+#define LIST_ADD_HEAD(type_, head_, elem_) \
+  do {                                     \
+    (elem_)->next = (*head_);              \
+    *(head_) = (elem_);                    \
+  } while (0)
+
+#define LIST_ADD_TAIL(type_, head_, elem_) \
+  do {                                     \
+    type_ **h = head_;                     \
+    while (*h != NULL) h = &(*h)->next;    \
+    *h = (elem_);                          \
+  } while (0)
+
+#define LIST_DELETE(type_, head_, elem_)   \
+  do {                                     \
+    type_ **h = head_;                     \
+    while (*h != (elem_)) h = &(*h)->next; \
+    *h = (elem_)->next;                    \
+  } while (0)
+
+uint16_t mg_ntohs(uint16_t net) {
+  uint8_t data[2] = {0, 0};
+  memcpy(&data, &net, sizeof(data));
+  return (uint16_t) ((uint16_t) data[1] | (((uint16_t) data[0]) << 8));
+}
+
+#define mg_htons(x) mg_ntohs(x)
+
+//-----------------
+
 const char * ssid = "South Africa 2.4G";
 const char * password = "redcasa88";
 
@@ -206,13 +239,14 @@ static size_t mg_mqtt_next_topic(struct mg_mqtt_message *msg,
                                  size_t pos) {
   unsigned char *buf = (unsigned char *) msg->payload.p + pos;
   size_t new_pos;
-  if (pos >= msg->payload.len) return 0;
 
-  topic->len = (size_t) (((unsigned) buf[0]) << 8 | buf[1]);
+  if ((size_t) pos >= msg->payload.len) return -1;
+
+  topic->len = buf[0] << 8 | buf[1];
   topic->p = (char *) buf + 2;
-  new_pos = pos + 2 + topic->len + (qos == NULL ? 0 : 1);
-  if ((size_t) new_pos > msg->payload.len) return 0;
-  if (qos != NULL) *qos = buf[2 + topic->len];
+  new_pos = pos + 2 + topic->len + 1;
+  if ((size_t) new_pos > msg->payload.len) return -1;
+  *qos = buf[2 + topic->len];
   return new_pos;
 }
 
@@ -256,6 +290,7 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
       switch (ev)
       {
         case MG_EV_MQTT_CONNECT:
+        {
           // Client connects
           if (mm->len < 9) 
           {
@@ -273,9 +308,38 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
             mg_send(c, response, sizeof(response));
           }
         break;
+        }
         case MG_EV_MQTT_SUBSCRIBE:
+        {
+          // Client subscribes
+          size_t pos = 0;  
+          uint8_t qos, resp[256];
+          struct mg_str topic;
+          int num_topics = 0;
+          while ((pos = mg_mqtt_next_sub(mm, &topic, &qos, pos)) != -1) {
+            struct sub *sub = (struct sub*) calloc(1, sizeof(*sub));
+            sub->c = c;
+            sub->topic = mg_strdup(topic);
+            sub->qos = qos;
+            LIST_ADD_HEAD(struct sub, &s_subs, sub);
+
+            // Change '+' to '*' for topic matching using mg_match
+            for (size_t i = 0; i < sub->topic.len; i++) {
+              if (sub->topic.p[i] == '+') ((char *) sub->topic.p)[i] = '*';
+            }
+            resp[num_topics++] = qos;
+          }
+          mg_mqtt_send_header(c, MG_MQTT_CMD_SUBACK, 0, num_topics + 2);
+          uint16_t id = mg_htons(mm->message_id);
+          mg_send(c, &id, 2);
+          mg_send(c, resp, num_topics);
+
         break;
+        }
         case MG_EV_MQTT_PUBLISH:
+        {
+          Serial.println("Publish");
+        }
         break;
 
       }
