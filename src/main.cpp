@@ -227,15 +227,69 @@ size_t mg_mqtt_next_unsub(struct mg_mqtt_message *msg, struct mg_str *topic,
   return mg_mqtt_next_topic(msg, topic, NULL, pos);
 }
 
+void mg_mqtt_send_header(struct mg_connection *c, uint8_t cmd, uint8_t flags,
+                         uint32_t len) {
+  uint8_t buf[1 + sizeof(len)], *vlen = &buf[1];
+  buf[0] = (uint8_t) ((cmd << 4) | flags);
+  do {
+    *vlen = len % 0x80;
+    len /= 0x80;
+    if (len > 0) *vlen |= 0x80;
+    vlen++;
+  } while (len > 0 && vlen < &buf[sizeof(buf)]);
+  mg_send(c, buf, (size_t) (vlen - buf));
+}
+
 
 static void ev_handler(struct mg_connection *c, int ev, void *ev_data) 
 {
   if (ev != MG_EV_POLL) 
   {
     printf("USER HANDLER GOT EVENT %d\n", ev);
-    struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-    Serial.print("cmd ");
-    Serial.println(mm->cmd);
+    //If is grater than 200, the it's a mqtt command.
+    if (ev > 200)
+    {
+      struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
+      Serial.print("cmd ");
+      Serial.println(mm->cmd);
+
+      switch (ev)
+      {
+        case MG_EV_MQTT_CONNECT:
+          // Client connects
+          if (mm->len < 9) 
+          {
+            Serial.println("Malformed MQTT frame");
+          } 
+          else if (mm->protocol_version != 4) 
+          {
+            Serial.println("Unsupported MQTT version ");
+            Serial.print(mm->protocol_version);
+          }
+          else 
+          {
+            uint8_t response[] = {0, 0};
+            mg_mqtt_send_header(c, MG_MQTT_CMD_CONNACK, 0, sizeof(response));
+            mg_send(c, response, sizeof(response));
+          }
+        break;
+        case MG_EV_MQTT_SUBSCRIBE:
+        break;
+        case MG_EV_MQTT_PUBLISH:
+        break;
+
+      }
+
+    }
+    else if (ev == MG_EV_ACCEPT)
+    {
+
+    }
+    else if (ev == MG_EV_CLOSE)
+    {
+
+    }
+  
   }
   /*
   if (ev == MG_EV_MQTT_CMD) {
@@ -329,7 +383,12 @@ void brokerv7_adapt()
     return;
   }
 
-  Serial.println("Bind ok, polling.");
+  Serial.println("Bind ok.");
+
+  //Attaches a built-in MQTT event handler to the given connection.
+  mg_set_protocol_mqtt(c);
+
+  Serial.println("Polling.");
 
   for (;;) {
     mg_mgr_poll(&mgr, 1000);
