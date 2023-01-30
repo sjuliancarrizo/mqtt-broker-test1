@@ -348,7 +348,8 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
           uint8_t qos, resp[256];
           struct mg_str topic;
           int num_topics = 0;
-          while ((pos = mg_mqtt_next_sub(mm, &topic, &qos, pos)) != -1) {
+          while ((pos = mg_mqtt_next_sub(mm, &topic, &qos, pos)) != -1) 
+          {
             struct sub *sub = (struct sub*) calloc(1, sizeof(*sub));
             sub->c = c;
             sub->topic = mg_strdup(topic);
@@ -356,7 +357,8 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
             LIST_ADD_HEAD(struct sub, &s_subs, sub);
 
             // Change '+' to '*' for topic matching using mg_match
-            for (size_t i = 0; i < sub->topic.len; i++) {
+            for (size_t i = 0; i < sub->topic.len; i++) 
+            {
               if (sub->topic.p[i] == '+') ((char *) sub->topic.p)[i] = '*';
             }
             resp[num_topics++] = qos;
@@ -386,10 +388,15 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
                 free(p);
               }
             }
-          break;
           }
         break;
 
+        }
+        case MG_EV_MQTT_PINGREQ: 
+        {
+        // The server must send a PINGRESP packet in response to a PINGREQ packet [MQTT-3.12.4-1]
+        mg_mqtt_send_header(c, MG_MQTT_CMD_PINGRESP, 0, 0);
+        break;
         }
 
       }
@@ -400,7 +407,13 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
     }
     else if (ev == MG_EV_CLOSE)
     {
-
+      // Client disconnects. Remove from the subscription list
+      for (struct sub *next, *sub = s_subs; sub != NULL; sub = next) 
+      {
+      next = sub->next;
+      if (c != sub->c) continue;
+      LIST_DELETE(struct sub, &s_subs, sub);
+      }
     }
   
   }
