@@ -8,7 +8,6 @@
 // static struct sub *_subs = NULL;
 
 MongooseMqttBroker::MongooseMqttBroker() : _running(false),
-                                           _subs(NULL),
                                            _c(NULL),
                                            _listen_on(NULL)
 {
@@ -20,7 +19,7 @@ MongooseMqttBroker::~MongooseMqttBroker()
 
 bool MongooseMqttBroker::begin(mg_mgr *mgr, const char *address)
 {
-  if ((_c = mg_bind(mgr, address, (mg_event_handler_t)eventHandler, NULL)) == NULL)
+  if ((_c = mg_bind(mgr, address, (mg_event_handler_t)defaultEventHandler, NULL)) == NULL)
   {
     Serial.println("mg_bind failed");
     return false;
@@ -32,7 +31,7 @@ bool MongooseMqttBroker::begin(mg_mgr *mgr, const char *address)
   return true;
 }
 
-void MongooseMqttBroker::eventHandler(struct mg_connection *c, int ev, void *ev_data, void *u)
+void MongooseMqttBroker::defaultEventHandler(struct mg_connection *c, int ev, void *ev_data, void *u)
 {
   MongooseMqttBroker *self = (MongooseMqttBroker *)u;
   self->eventHandler(c,ev,ev_data);

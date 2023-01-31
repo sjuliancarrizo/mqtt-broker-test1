@@ -40,6 +40,7 @@ struct sub
   uint8_t qos;
 };
 
+static struct sub *_subs;
 
 class MongooseMqttBroker
 {
@@ -47,10 +48,10 @@ class MongooseMqttBroker
     const char *_listen_on;
     bool _running;
     //A list of subscription
-    struct sub *_subs;
+    
     struct mg_connection *_c;
 
-    static void eventHandler(struct mg_connection *c, int ev, void *ev_data, void *u);
+    static void defaultEventHandler(struct mg_connection *c, int ev, void *ev_data, void *u);
     void eventHandler(struct mg_connection *c, int ev, void *ev_data);
 
     bool mg_match(struct mg_str s, struct mg_str p, struct mg_str *caps);
